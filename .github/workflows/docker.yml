@@ -1,15 +1,30 @@
-name: Build image
+name: Build and push image
 
 on:
   push:
     branches: [main]
   pull_request:
 
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Build image
-        run: docker build -t hello-box .
+        run: docker build -t $IMAGE:latest -t $IMAGE:${{ github.sha }} .
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Push image
+        if: github.event_name == 'push'
+        run: docker push $IMAGE --all-tagsx
